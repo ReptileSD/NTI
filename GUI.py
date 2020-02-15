@@ -1,6 +1,8 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QSpinBox, QPushButton, QMainWindow, QLabel, QLineEdit, QLCDNumber
+from client import Client
+from PyQt5.QtWidgets import QApplication, QWidget, QSpinBox, QPushButton, QLabel, QLCDNumber
 from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import QTimer
 
 
 class MainWindow(QWidget):
@@ -16,6 +18,10 @@ class MainWindow(QWidget):
         return super().resizeEvent(event)
 
     def initUI(self):
+        self.timer = QTimer(self)
+        self.timer.start(1000)
+        self.timer.timeout.connect(self.update_info)
+
         self.setGeometry(100, 100, 1500, 800)
         self.setWindowTitle('Настройки микроклимата (By \"It\'s a secret\")')
         self.resized.connect(self.update_size)
@@ -117,8 +123,6 @@ class MainWindow(QWidget):
         self.change_settings_btn.clicked.connect(self.change_settings)
         self.change_settings_btn.hide()
 
-        self.update_info('36.6', '50.35', '0.000', '100000', '98066.5')
-
     def change_settings(self):
         self.settings_btn.show()
         self.curLabel.show()
@@ -161,7 +165,6 @@ class MainWindow(QWidget):
         self.co2_spin.show()
         self.bright_spin.show()
         self.pressure_spin.show()
-
 
     def update_size(self):
         self.settings_btn.move(self.width() * 0.15, self.height() * 0.95)
@@ -211,12 +214,18 @@ class MainWindow(QWidget):
         self.pressure_LCD_set.resize(self.width() * 0.3, self.height() * 0.13)
         self.pressure_LCD_set.move(self.width() * 0.05, self.height() * 0.8)
 
-    def update_info(self, t, h, co, br, pr):  # Состояние
-        self.temp_LCD_cur.display(f'{t} C\'')
-        self.hum_LCD_cur.display(f'{h} \'o')
-        self.co2_LCD_cur.display(f'{co} \'o')
-        self.bright_LCD_cur.display(f'{br} lu')
-        self.pressure_LCD_cur.display(f'{pr} Pa')
+    def update_info(self):  # Состояние
+        msg = client.get_messages()
+        print(msg)
+        if msg:
+            msg = msg[-1].split()
+            t, h, co, br, pr = msg
+            self.temp_LCD_cur.display(f'{t} C\'')
+            self.hum_LCD_cur.display(f'{h} \'o')
+            self.co2_LCD_cur.display(f'{co} \'o')
+            self.bright_LCD_cur.display(f'{br} lu')
+            self.pressure_LCD_cur.display(f'{pr} Pa')
+        self.timer.start(1000)
 
     def update_settings(self):  # Настройки
         self.settings = [self.temp_spin.value(),
@@ -224,7 +233,7 @@ class MainWindow(QWidget):
                          self.co2_spin.value(),
                          self.bright_spin.value(),
                          self.pressure_spin.value()]
-
+        client.send(' '.join([str(i) for i in self.settings]))
         self.temp_LCD_set.display(f'{self.settings[0] / 10} C\'')
         self.hum_LCD_set.display(f'{self.settings[1] / 100} \'o')
         self.co2_LCD_set.display(f'{self.settings[2] / 1000} \'o')
@@ -234,6 +243,7 @@ class MainWindow(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    client = Client('localhost')
     ex = MainWindow()
     ex.show()
     sys.exit(app.exec())
