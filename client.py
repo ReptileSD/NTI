@@ -30,7 +30,7 @@ class Client:
     def get_messages(self):
         message = self.server_message
         self.server_message = []
-        return set(message)
+        return message
 
 
 class SocketThread(threading.Thread):
